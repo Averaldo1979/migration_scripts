@@ -1,28 +1,15 @@
 const express = require('express');
-const pg = require('pg');
-const { Pool } = pg;
+const ADODB = require('node-adodb');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 const port = 5000;
 
-// Configurar o pg para retornar valores NUMERIC/DECIMAL como Number ao invés de String
-// IDs de tipo: 1700 (NUMERIC), 701 (FLOAT8), 700 (FLOAT4)
-pg.types.setTypeParser(1700, function(val) {
-  return val === null ? null : parseFloat(val);
-});
-
-// Configuração do Banco de Dados PostgreSQL
-// Em produção (VM 108): banco local 'averaldo_teste'
-// Em dev local: use .env para sobrescrever (ou túnel SSH)
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'averaldo_teste',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'Ali@Ali12082022#',
-});
+// Configuração do MS Access (Banco de Dados em D:\BDERP)
+const dbPath = 'D:\\BDERP\\BDDataBase1.accdb';
+const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${dbPath};Persist Security Info=False;`;
+const connection = ADODB.open(connectionString);
 
 app.use(cors());
 app.use(express.json());
@@ -33,62 +20,87 @@ app.use((req, res, next) => {
   next();
 });
 
-// Endpoint genérico para tabelas (Simulando Supabase)
+// Helper for SQL values to handle MS Access syntax
+function formatValue(val) {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
+    if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    return val;
+}
+
+// Endpoint genérico para tabelas (Simulando Supabase sobre MS Access)
 app.get('/api/:table', async (req, res) => {
   const { table } = req.params;
   const { order, limit } = req.query;
   
-  let query = `SELECT * FROM ${table}`;
+  let query = `SELECT * FROM [${table}]`;
   
   if (order) {
-    // Se order for 'date', vira 'ORDER BY date'
-    // Se precisar de desc: ORDER BY date DESC
-    // Simplificando: se contiver 'date' ou 'created_at', assume DESC por padrão se for log
     const descTables = ['fuel_logs', 'maintenance_logs', 'washing_logs', 'checklists', 'tyre_audits', 'tyre_movements', 'tyre_repairs', 'ppe_movements', 'equipment_maintenance_logs', 'odometer_logs', 'hr_events', 'attendance', 'cargas'];
     const isDesc = descTables.includes(table);
-    query += ` ORDER BY ${order} ${isDesc ? 'DESC' : 'ASC'}`;
+    query += ` ORDER BY [${order}] ${isDesc ? 'DESC' : 'ASC'}`;
   }
   
-  if (limit) query += ` LIMIT ${limit}`;
+  // No TOP/LIMIT directly in the same way? Access uses SELECT TOP X
+  if (limit) {
+    query = `SELECT TOP ${limit} * FROM [${table}]` + (order ? ` ORDER BY [${order}] ${descTables.includes(table) ? 'DESC' : 'ASC'}` : '');
+  }
 
-  console.log(`🔍 Executando query em ${table}: ${query}`);
+  console.log(`🔍 Executando query em [${table}]: ${query}`);
   try {
     const start = Date.now();
-    const result = await pool.query(query);
+    const result = await connection.query(query);
     const duration = Date.now() - start;
-    console.log(`✅ Resultado de ${table}: ${result.rows.length} linhas em ${duration}ms`);
-    res.json(result.rows);
+    console.log(`✅ Resultado de [${table}]: ${result.length} linhas em ${duration}ms`);
+    res.json(result);
   } catch (err) {
-    console.error(`❌ Erro ao buscar em ${table}:`, err.message);
+    console.error(`❌ Erro ao buscar em [${table}]:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
+// Upsert genérico para MS Access (INSERT ou UPDATE manual)
 app.post('/api/:table/upsert', async (req, res) => {
   const { table } = req.params;
   const data = req.body;
+  const id = data.id;
   
   if (!data || Object.keys(data).length === 0) {
       return res.status(400).json({ error: "Dados vazios" });
   }
 
-  const columns = Object.keys(data).join(', ');
-  const values = Object.values(data);
-  const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-  const updates = Object.keys(data).map((col, i) => `${col} = EXCLUDED.${col}`).join(', ');
-
-  const query = `
-    INSERT INTO ${table} (${columns}) 
-    VALUES (${placeholders}) 
-    ON CONFLICT (id) DO UPDATE SET ${updates}
-    RETURNING *;
-  `;
-
   try {
-    const result = await pool.query(query, values);
-    res.json(result.rows[0]);
+    // 1. Verificar se registro existe (Access não tem ON CONFLICT)
+    let exists = false;
+    if (id) {
+        const checkRes = await connection.query(`SELECT id FROM [${table}] WHERE id = ${formatValue(id)}`);
+        exists = (checkRes.length > 0);
+    }
+
+    if (exists) {
+        // UPDATE
+        const updates = Object.keys(data)
+            .filter(k => k !== 'id')
+            .map(col => `[${col}] = ${formatValue(data[col])}`)
+            .join(', ');
+        
+        const updateQuery = `UPDATE [${table}] SET ${updates} WHERE id = ${formatValue(id)}`;
+        console.log(`🔄 Atualizando em [${table}]: ${id}`);
+        await connection.execute(updateQuery);
+    } else {
+        // INSERT
+        const columns = Object.keys(data).map(c => `[${c}]`).join(', ');
+        const values = Object.values(data).map(v => formatValue(v)).join(', ');
+        const insertQuery = `INSERT INTO [${table}] (${columns}) VALUES (${values})`;
+        console.log(`📥 Inserindo em [${table}]: ${id || 'sem id'}`);
+        await connection.execute(insertQuery);
+    }
+    
+    // Retornar o dado inserido/atualizado (simulado para satisfazer o frontend)
+    res.json(data);
   } catch (err) {
-    console.error(`Erro no upsert em ${table}:`, err.message);
+    console.error(`❌ Erro no upsert em ${table}:`, err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -100,20 +112,21 @@ app.delete('/api/:table', async (req, res) => {
     if (!id) return res.status(400).json({ error: "ID não informado" });
 
     try {
-        await pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+        const query = `DELETE FROM [${table}] WHERE id = ${formatValue(id)}`;
+        await connection.execute(query);
         res.json({ success: true });
     } catch (err) {
-        console.error(`Erro ao deletar em ${table}:`, err.message);
+        console.error(`❌ Erro ao deletar em ${table}:`, err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
 // health check
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', database: 'connected' });
+    res.json({ status: 'ok', database: 'connected', driver: 'adodb' });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Backend FrotaControl rodando em http://localhost:${port}`);
-  console.log(`📡 Conectado ao PostgreSQL via localhost (Túnel para 192.168.0.108:5432)`);
+  console.log(`🚀 Backend FrotaControl (MS Access) rodando em http://localhost:${port}`);
+  console.log(`📡 Conectado ao banco: ${dbPath}`);
 });
