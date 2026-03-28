@@ -1,0 +1,65 @@
+name: Deploy Torre de Controle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 100.105.43.53
+          username: root
+          key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 5m
+          script_stop: true
+          script: |
+            set -e
+            cd /opt/torre-de-controle
+
+            echo ">>> Git pull"
+            git fetch origin main
+            LOCAL=$(git rev-parse HEAD)
+            REMOTE=$(git rev-parse origin/main)
+            if [ "$LOCAL" = "$REMOTE" ]; then
+              echo "Nenhuma alteracao detectada, pulando deploy"
+              exit 0
+            fi
+            git pull origin main
+
+            echo ">>> Checando dependencias"
+            if git diff --name-only "$LOCAL" "$REMOTE" | grep -q 'package.json\|package-lock.json'; then
+              echo "package.json alterado, instalando deps..."
+              npm install --production=false
+            fi
+
+            echo ">>> Build"
+            npm run build
+
+            echo ">>> Deploy frontend"
+            cp -r dist/* /var/www/cca/torre-controle/
+            chown -R cca:cca /var/www/cca/torre-controle/
+
+            echo ">>> Restart backend"
+            if git diff --name-only "$LOCAL" "$REMOTE" | grep -q 'server.cjs'; then
+              echo "server.cjs alterado, reiniciando API..."
+              pm2 restart torre-api || pm2 start server.cjs --name torre-api
+              pm2 save
+            fi
+
+            systemctl reload nginx
+            echo "Deploy concluido: $(date '+%Y-%m-%d %H:%M:%S')"

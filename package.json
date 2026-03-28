@@ -1,0 +1,38 @@
+{
+  "name": "frotacontrol---torre-de-controle-de-veículos",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:tunnel\" \"node server.cjs\" \"vite\"",
+    "backend": "node server.cjs",
+    "dev:tunnel": "ssh -p 8080 -L 5432:localhost:5432 root@192.168.0.108 -N",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy.ps1"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "@supabase/supabase-js": "^2.100.0",
+    "@types/pg": "^8.20.0",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "dexie": "^4.3.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "lucide-react": "^0.577.0",
+    "pg": "^8.20.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^3.7.0",
+    "vite-plugin-pwa": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

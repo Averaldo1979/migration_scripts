@@ -1,0 +1,13 @@
+{
+  "name": "FrotaControl - Torre de Controle de Veículos",
+  "description": "Uma plataforma avançada de gestão de frotas com monitoramento em tempo real de manutenção, combustível, documentos e integração nativa com Supabase Cloud e Vercel.",
+  "version": "2.6.0",
+  "deployment": {
+    "platform": "Vercel",
+    "database": "Supabase",
+    "ai_engine": "Gemini 3.0 Flash"
+  },
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -1,0 +1,85 @@
+/* ── Global Reset ─────────────────────────────── */
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scroll suave e inércia (iOS) ──────────────── */
+* {
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+/* ── Tabelas: scroll horizontal automático ─────── */
+/* Envolva tabelas em div com overflow-x-auto para mobile */
+table {
+  min-width: 600px;
+}
+
+/* ── Prevenir zoom automático em inputs iOS ────── */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Reduz padding excessivo em telas pequenas */
+  .px-8 {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+
+  /* Espaçamento conteúdo principal */
+  .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+}
+
+/* ── Scrollbar personalizada ───────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+/* ── Overflow horizontal para containers de tabela ─ */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Animações suaves ──────────────────────────── */
+@keyframes slide-in-from-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+/* ── Airport Board Styles ───────────────────────── */
+.airport-font {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+@keyframes pulse-red-row {
+  0%, 100% { background-color: rgba(239, 68, 68, 0.25); }
+  50% { background-color: rgba(239, 68, 68, 0.05); }
+}
+.row-atrasado-blink {
+  animation: pulse-red-row 1s infinite ease-in-out !important;
+}
+
+@keyframes pulse-yellow-row {
+  0%, 100% { background-color: rgba(234, 179, 8, 0.2); }
+  50% { background-color: rgba(234, 179, 8, 0.02); }
+}
+.row-carregando-blink {
+  animation: pulse-yellow-row 1.5s infinite ease-in-out !important;
+}

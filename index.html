@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FrotaControl - Torre de Controle</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 🛡️ Limpeza de Service Workers antigos para evitar tela branca em desenvolvimento
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
+    // Função de emergência para limpar estado corrompido
+    window.clearSessionAndReload = () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
+    };
+
+    if (window.tailwind) {
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cca: {
+                primary: '#e3222a',    // Vermelho Principal
+                secondary: '#a24246',  // Marrom/Vinho
+                accent: '#bf8b94',     // Rosa Acinzentado
+                light: '#f4e7e7',      // Fundo Claro
+                highlight: '#e8948c'   // Coral
+              },
+              'cca-primary': {
+                50: '#fef2f2',
+                100: '#fee2e2',
+                600: '#e3222a',
+                700: '#c51d24',
+              },
+              'cca-secondary': {
+                50: '#fdf4f4',
+                500: '#a24246',
+                600: '#8e3a3e',
+              },
+              // Sobrescrevendo as cores padrão para tema global imediato
+              blue: {
+                50: '#fef2f2',
+                100: '#fee2e2',
+                500: '#e3222a',
+                600: '#e3222a',
+                700: '#c51d24',
+              },
+              indigo: {
+                50: '#fdf4f4',
+                500: '#a24246',
+                600: '#8e3a3e',
+              },
+              slate: {
+                900: '#331111', // Um slate mais quente p/ combinar com vermelho
+              }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Melhorar renderização de fontes e remover atraso de toque */
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      touch-action: manipulation;
+    }
+
+    /* Prevenir zoom automático em inputs no iOS */
+    @media screen and (max-width: 768px) {
+
+      input,
+      select,
+      textarea {
+        font-size: 16px !important;
+      }
+    }
+  </style>
+
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
