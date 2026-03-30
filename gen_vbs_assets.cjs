@@ -14,30 +14,29 @@ const rawValues = match[1];
 const rows = rawValues.split(/\)\s*,\s*\(/);
 
 let vbs = `
-On Error Resume Next
 Set conn = CreateObject("ADODB.Connection")
 conn.Open "Provider=Microsoft.ACE.OLEDB.12.0;Data Source=D:\\BDERP\\BDDataBase1.accdb;Persist Security Info=False;"
-conn.Execute "DELETE FROM [vehicles]"
 
 Sub Ins(vals)
+    ' TESTE COM O PRIMEIRO REGISTRO APENAS PARA VER ERRO
+    On Error Resume Next
     sql = "INSERT INTO [vehicles] ([id], [plate], [model], [brand], [year], [model_year], [exercise_year], [vehicle_type], [owner_name], [capacity], [km], [next_maintenance_km], [unit_id], [status], [photo_url], [documents], [telemetry], [last_exit_km], [last_exit_date], [created_at]) VALUES (" & vals & ")"
     conn.Execute sql
+    If Err.Number <> 0 Then
+        WScript.Echo "❌ Erro em SQL: " & Err.Description
+        WScript.Echo "Query: " & sql
+        WScript.Quit 1
+    End If
 End Sub
 `;
 
-for (let row of rows) {
-    let clean = row.trim();
-    if (clean.endsWith(')')) clean = clean.slice(0, -1);
-    if (clean.startsWith('(')) clean = clean.slice(1);
-    
-    // Escapar aspas duplas no VBS
-    vbs += `Ins("${clean.replace(/"/g, '""')}")\n`;
-}
+// Apenas o primeiro registro
+let row = rows[0].trim();
+if (row.endsWith(')')) row = row.slice(0, -1);
+if (row.startsWith('(')) row = row.slice(1);
+vbs += `Ins("${row.replace(/"/g, '""')}")\n`;
 
-vbs += `
-conn.Close
-WScript.Echo "Importado com sucesso!"
-`;
+vbs += `conn.Close\nWScript.Echo "Fim teste"\n`;
 
 fs.writeFileSync(vbsOutput, vbs);
-console.log("VBS de importação gerado!");
+console.log("VBS de debugar gerado!");
