@@ -12,10 +12,10 @@ export const getTodayLocalDate = (): string => {
  */
 export const formatSafeDate = (dateStr: string): string => {
   if (!dateStr) return '---';
-  // Se já tiver T, assume que é um timestamp completo
-  // Caso contrário, injeta T12:00 para forçar o meio do dia no fuso local
-  const date = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T12:00:00');
-  return date.toLocaleDateString('pt-BR');
+  // Troca espaço por T para garantir formato ISO (ex: postgres -> ISO)
+  const isoStr = dateStr.replace(' ', 'T');
+  const date = isoStr.includes('T') ? new Date(isoStr) : new Date(isoStr + 'T12:00:00');
+  return isNaN(date.getTime()) ? 'Invalid' : date.toLocaleDateString('pt-BR');
 };
 
 /**

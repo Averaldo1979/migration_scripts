@@ -31,11 +31,7 @@ const PPEControl: React.FC<PPEControlProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // Helper para formatar data sem erro de fuso horário
-  const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return '---';
-    const date = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T12:00:00');
-    return date.toLocaleDateString('pt-BR');
-  };
+  const formatDisplayDate = formatSafeDate;
   const [showItemForm, setShowItemForm] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [showMovementForm, setShowMovementForm] = useState<PPEMovement['type'] | null>(null);
