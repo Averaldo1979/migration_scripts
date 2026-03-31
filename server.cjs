@@ -9,7 +9,7 @@ const port = 5000;
 // Configuração do MS Access (Banco de Dados em D:\BDERP)
 const dbPath = 'D:\\BDERP\\BDDataBase1.accdb';
 const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${dbPath};Persist Security Info=False;`;
-const connection = ADODB.open(connectionString);
+const connection = ADODB.open(connectionString, process.arch === 'x64');
 
 app.use(cors());
 app.use(express.json());

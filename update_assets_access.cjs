@@ -3,7 +3,7 @@ const ADODB = require('node-adodb');
 
 const dbPath = 'D:\\BDERP\\BDDataBase1.accdb';
 const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${dbPath};Persist Security Info=False;`;
-const connection = ADODB.open(connectionString);
+const connection = ADODB.open(connectionString, process.arch === 'x64');
 
 const sqlFile = 'C:\\Users\\everaldo\\Desktop\\Projeto Sistema\\vehicles_rows.sql';
 

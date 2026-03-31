@@ -2,7 +2,7 @@ const ADODB = require('node-adodb');
 
 const dbPath = 'D:\\BDERP\\BDDataBase1.accdb';
 const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${dbPath};Persist Security Info=False;`;
-const connection = ADODB.open(connectionString);
+const connection = ADODB.open(connectionString, process.arch === 'x64');
 
 const tableDefinitions = [
     { name: 'units', sql: 'CREATE TABLE [units] (id TEXT(255) PRIMARY KEY, [name] TEXT(255) NOT NULL, [code] TEXT(255), responsible TEXT(255), [address] MEMO, phone TEXT(255), created_at DATETIME DEFAULT Now())' },

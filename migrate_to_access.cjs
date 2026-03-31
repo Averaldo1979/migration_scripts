@@ -14,7 +14,7 @@ const pgPool = new Pool({
 // MS Access Destination
 const accessDbPath = 'D:\\BDERP\\BDDataBase1.accdb';
 const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${accessDbPath};Persist Security Info=False;`;
-const access = ADODB.open(connectionString);
+const access = ADODB.open(connectionString, process.arch === 'x64');
 
 const tables = [
   'units',
