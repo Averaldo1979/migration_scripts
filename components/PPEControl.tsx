@@ -923,12 +923,22 @@ const PPEControl: React.FC<PPEControlProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Quantidade *</label>
-                  <input type="number" required value={editingMovement.quantity} onChange={e => setEditingMovement({ ...editingMovement, quantity: parseInt(e.target.value) || 0 })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-lg text-blue-600" />
+                  <input type="number" required value={editingMovement.quantity} onChange={e => {
+                    const q = parseInt(e.target.value) || 0;
+                    setEditingMovement({ ...editingMovement, quantity: q, totalValue: q * (editingMovement.unitValue || 0) });
+                  }} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-lg text-blue-600" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Data *</label>
-                  <input type="date" required value={editingMovement.date} onChange={e => setEditingMovement({ ...editingMovement, date: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold" />
+                  <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Valor Unitário (R$)</label>
+                  <input type="number" step="0.01" value={editingMovement.unitValue} onChange={e => {
+                    const v = parseFloat(e.target.value) || 0;
+                    setEditingMovement({ ...editingMovement, unitValue: v, totalValue: v * (editingMovement.quantity || 0) });
+                  }} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-gray-800" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Data *</label>
+                <input type="date" required value={editingMovement.date.slice(0, 10)} onChange={e => setEditingMovement({ ...editingMovement, date: e.target.value })} className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold" />
               </div>
               <div>
                 <label className="block text-[11px] font-black text-gray-400 uppercase mb-2">Responsável / Supervisor</label>
