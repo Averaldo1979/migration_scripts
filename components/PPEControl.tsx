@@ -616,6 +616,7 @@ const PPEControl: React.FC<PPEControlProps> = ({
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoria</th>
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Nº CA</th>
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fabricante</th>
+                        <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Vencimento CA</th>
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Saldo</th>
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Mínimo</th>
                         <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Ações</th>
@@ -644,6 +645,33 @@ const PPEControl: React.FC<PPEControlProps> = ({
                             </td>
                             <td className="px-8 py-5">
                               <span className="text-xs font-bold text-slate-600 italic">{item.manufacturer || '---'}</span>
+                            </td>
+                            <td className="px-8 py-5 text-center">
+                              {item.caExpiryDate ? (
+                                (() => {
+                                  const expiry = new Date(item.caExpiryDate);
+                                  const today = new Date();
+                                  const diffDays = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                  const isExpired = diffDays < 0;
+                                  const isNear = diffDays <= 30 && !isExpired;
+                                  
+                                  return (
+                                    <div className="flex flex-col items-center">
+                                      <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${
+                                        isExpired ? 'bg-red-100 text-red-700' : 
+                                        isNear ? 'bg-orange-100 text-orange-700' : 
+                                        'bg-gray-100 text-gray-600'
+                                      }`}>
+                                        {formatDisplayDate(item.caExpiryDate)}
+                                      </span>
+                                      {isExpired && <span className="text-[8px] font-black text-red-500 mt-1 uppercase">Vencido</span>}
+                                      {isNear && <span className="text-[8px] font-black text-orange-500 mt-1 uppercase">Vence em {diffDays} dias</span>}
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                <span className="text-[10px] font-bold text-gray-300">---</span>
+                              )}
                             </td>
                             <td className="px-8 py-5 text-center">
                               <div className="flex flex-col items-center">

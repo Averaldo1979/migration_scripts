@@ -33,7 +33,7 @@ function formatValue(val) {
 app.get('/api/:table', async (req, res) => {
   const { table } = req.params;
   const { order, limit } = req.query;
-  const descTables = ['fuel_logs', 'maintenance_logs', 'washing_logs', 'checklists', 'tyre_audits', 'tyre_movements', 'tyre_repairs', 'ppe_movements', 'equipment_maintenance_logs', 'odometer_logs', 'hr_events', 'attendance', 'cargas'];
+  const descTables = ['fuel_logs', 'maintenance_logs', 'washing_logs', 'checklists', 'tyre_audits', 'tyre_movements', 'tyre_repairs', 'ppe_movements', 'equipment_maintenance_logs', 'odometer_logs', 'hr_events', 'attendance', 'cargas', 'history_logs'];
   
   let query = `SELECT * FROM [${table}]`;
   

@@ -4,37 +4,10 @@ const ADODB = require('node-adodb');
 
 const dbPath = 'D:\\BDERP\\BDDataBase1.accdb';
 const connectionString = `Provider=Microsoft.ACE.OLEDB.12.0;Data Source=${dbPath};Persist Security Info=False;`;
-const connection = ADODB.open(connectionString, true); // true for x64
+const connection = ADODB.open(connectionString, process.arch === 'x64');
 
 const sqlDir = 'C:\\Users\\everaldo\\Desktop\\Projeto Sistema';
 
-// List of all SQL files found on desktop
-const sqlFiles = [
-  'app_users_rows.sql',
-  'attendance_rows.sql',
-  'cargas_rows.sql',
-  'drivers_rows.sql',
-  'fuel_logs_rows.sql',
-  'fuel_types_rows.sql',
-  'history_logs_rows.sql',
-  'hr_events_rows.sql',
-  'maintenance_logs_rows.sql',
-  'ppe_items_rows.sql',
-  'ppe_movements_rows.sql',
-  'suppliers_rows.sql',
-  'teams_rows.sql',
-  'team_role_values_rows.sql',
-  'tyres_rows.sql',
-  'tyre_brands_rows.sql',
-  'tyre_models_rows.sql',
-  'tyre_movements_rows.sql',
-  'tyre_repairs_rows.sql',
-  'units_rows.sql',
-  'vehicles_rows.sql',
-  'washing_logs_rows.sql'
-];
-
-// Reference table colums to filter out extra columns from PG export like 'updated_at' if not in Access
 const tableColumns = {
     'units': ['id', 'name', 'code', 'responsible', 'address', 'phone'],
     'teams': ['id', 'name', 'number', 'unit_id', 'status', 'target_staff'],
@@ -65,84 +38,132 @@ const tableColumns = {
     'team_role_values': ['id', 'role', 'load_value', 'value', 'active']
 };
 
-async function syncAll() {
-    console.log("🚀 Iniciando SINCRONIZAÇÃO GERAL de dados para MS Access...");
-    
-    for (const sqlFile of sqlFiles) {
-        const filePath = path.join(sqlDir, sqlFile);
-        if (!fs.existsSync(filePath)) continue;
+const boolCols = ['replaced_by_diarista', 'active'];
 
-        console.log(`\n📄 Processando ${sqlFile}...`);
-        try {
-            const content = fs.readFileSync(filePath, 'utf8');
-            
-            // Extract table name from "public"."table"
-            const tableMatch = content.match(/INSERT INTO\s+"public"\."([^"]+)"/i);
-            if (!tableMatch) {
-                console.error(`❌ Não foi possível identificar a tabela em ${sqlFile}`);
+function smartSplit(valuesStr) {
+    const rows = [];
+    let current = '';
+    let depth = 0;
+    let inQuote = false;
+    
+    for (let i = 0; i < valuesStr.length; i++) {
+        const char = valuesStr[i];
+        if (char === "'" && valuesStr[i-1] !== '\\') inQuote = !inQuote;
+        if (!inQuote) {
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+        }
+        
+        if (char === ',' && depth === 0 && !inQuote) {
+            // New row coming (if PG uses ), ( style)
+            // Actually PG uses ), (
+        }
+        
+        current += char;
+        
+        if (char === ')' && depth === 0 && !inQuote) {
+            let row = current.trim();
+            if (row.startsWith(',')) row = row.slice(1).trim();
+            if (row.startsWith('(') && row.endsWith(')')) {
+                rows.push(row.slice(1, -1));
+            }
+            current = '';
+        }
+    }
+    return rows;
+}
+
+function parseValues(rowStr) {
+    const vals = [];
+    let current = '';
+    let inQuote = false;
+    let i = 0;
+    while (i < rowStr.length) {
+        const char = rowStr[i];
+        if (char === "'" ) {
+            if (inQuote && rowStr[i+1] === "'") {
+                // Escaped quote
+                current += "''";
+                i += 2;
                 continue;
             }
+            inQuote = !inQuote;
+            current += char;
+        } else if (char === ',' && !inQuote) {
+            vals.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+        i++;
+    }
+    vals.push(current.trim());
+    return vals;
+}
+
+async function sync() {
+    console.log("🚀 Starting FINAL SAFE SYNC...");
+    const files = fs.readdirSync(sqlDir).filter(f => f.endsWith('.sql'));
+
+    for (const sqlFile of files) {
+        try {
+            const content = fs.readFileSync(path.join(sqlDir, sqlFile), 'utf8');
+            const tableMatch = content.match(/INSERT INTO\s+"public"\."([^"]+)"/i);
+            if (!tableMatch) continue;
             const tableName = tableMatch[1];
             
-            // Extract Column Names from ("col1", "col2"...)
+            console.log(`\n📄 Processing [${tableName}]...`);
             const colMatch = content.match(/\(([^)]+)\)\s*VALUES/i);
-            if (!colMatch) {
-                console.error(`❌ Não foi possível identificar colunas em ${sqlFile}`);
-                continue;
-            }
-            
+            if (!colMatch) continue;
             const rawCols = colMatch[1].replace(/"/g, '').split(',').map(c => c.trim());
-            const targetCols = tableColumns[tableName] || rawCols;
             
-            // Extract Values
-            const valuesMatch = content.match(/VALUES\s*\(([\s\S]*)\)\s*;?/i);
-            const rows = valuesMatch[1].split(/\)\s*,\s*\(/);
+            const valuesPart = content.slice(content.indexOf('VALUES') + 6).trim();
+            const rows = smartSplit(valuesPart);
+            
+            console.log(`🧹 Clearing [${tableName}]...`);
+            try { await connection.execute(`DELETE FROM [${tableName}]`); } catch(e){}
 
-            console.log(`🧹 Limpando [${tableName}]...`);
-            try { await connection.execute(`DELETE FROM [${tableName}]`); } catch (e) {}
+            const targetCols = tableColumns[tableName] || rawCols;
+            const keptIndices = [];
+            const keptNames = [];
+            for(let i=0; i<rawCols.length; i++) {
+                if (targetCols.includes(rawCols[i])) {
+                    keptIndices.push(i);
+                    keptNames.push(rawCols[i]);
+                }
+            }
 
             let count = 0;
-            const accessColsStr = targetCols.map(c => `[${c}]`).join(', ');
-
-            for (let row of rows) {
-                let cleanRow = row.trim();
-                if (cleanRow.startsWith('(')) cleanRow = cleanRow.slice(1);
-                if (cleanRow.endsWith(')')) cleanRow = cleanRow.slice(0, -1);
-                
-                // Parse values to handle only the columns we want
-                // Regex for splitting by comma but respecting quotes
-                const values = cleanRow.match(/('([^']|'')*'|null|NULL|[^,]+)/g).map(v => v.trim());
-                
-                // Filter values based on column selection
-                const filteredValues = [];
-                for (let i = 0; i < rawCols.length; i++) {
-                    if (targetCols.includes(rawCols[i])) {
-                        let val = values[i];
-                        if (val.toLowerCase() === 'null') val = 'NULL';
-                        // Handle PostgreSQL timestamp with zone +00 (Access doesn't like)
-                        val = val.replace(/\+00'/g, "'"); 
-                        filteredValues.push(val);
+            for (const rowStr of rows) {
+                const rawValues = parseValues(rowStr);
+                const finalValues = [];
+                for (const idx of keptIndices) {
+                    let val = rawValues[idx];
+                    if (!val || val.toLowerCase() === 'null') {
+                        val = 'NULL';
+                    } else if (boolCols.includes(rawCols[idx])) {
+                        val = (val.toLowerCase() === 'true' || val === "'true'" || val === '1') ? 'True' : 'False';
+                    } else {
+                        val = val.replace(/\+00'/g, "'");
                     }
+                    finalValues.push(val);
                 }
 
-                const sql = `INSERT INTO [${tableName}] (${accessColsStr}) VALUES (${filteredValues.join(', ')})`;
-                
+                const sql = `INSERT INTO [${tableName}] (${keptNames.map(n => `[${n}]`).join(',')}) VALUES (${finalValues.join(',')})`;
                 try {
                     await connection.execute(sql);
                     count++;
+                    if (count % 50 === 0) process.stdout.write('.');
                 } catch (err) {
-                    // console.error(`❌ Erro em [${tableName}] registro ${count+1}:`, err.message);
+                    // console.error(`\n❌ Error in [${tableName}] at row ${count+1}:`, err.message);
                 }
             }
-            console.log(`✅ [${tableName}] finalizado: ${count} registros.`);
+            console.log(`\n✅ [${tableName}] finished: ${count} records.`);
         } catch (e) {
-            console.error(`❌ Erro fatal em ${sqlFile}:`, e.message);
+            console.error(`❌ Fatal Error in ${sqlFile}:`, e.message);
         }
     }
-    
-    console.log("\n✨ SINCRONIZAÇÃO COMPLETA!");
+    console.log("\n✨ ALL SYNCED!");
 }
 
-syncAll().then(() => {
-    process.exit(0);
-});
+sync().then(() => process.exit(0));
