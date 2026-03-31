@@ -33,11 +33,11 @@ function formatValue(val) {
 app.get('/api/:table', async (req, res) => {
   const { table } = req.params;
   const { order, limit } = req.query;
+  const descTables = ['fuel_logs', 'maintenance_logs', 'washing_logs', 'checklists', 'tyre_audits', 'tyre_movements', 'tyre_repairs', 'ppe_movements', 'equipment_maintenance_logs', 'odometer_logs', 'hr_events', 'attendance', 'cargas'];
   
   let query = `SELECT * FROM [${table}]`;
   
   if (order) {
-    const descTables = ['fuel_logs', 'maintenance_logs', 'washing_logs', 'checklists', 'tyre_audits', 'tyre_movements', 'tyre_repairs', 'ppe_movements', 'equipment_maintenance_logs', 'odometer_logs', 'hr_events', 'attendance', 'cargas'];
     const isDesc = descTables.includes(table);
     query += ` ORDER BY [${order}] ${isDesc ? 'DESC' : 'ASC'}`;
   }
